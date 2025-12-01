@@ -147,11 +147,13 @@ CMD ["npm", "run", "dev"]
 ##### 4.6 สร้าง Docker Image
 ```bash
 docker build -t docker-node-app .
+docker build -t bakwave:1.0 ./isan/folder
 ```
 
 ##### 4.7 รัน Docker Container
 ```bash
 docker run -d -p 3300:3000 --name mydockerapp docker-node-app
+docker run -d -p 3300:3000 --name docker-wave bakwave:1.0
 ```
 
 #### 5. การใช้งาน Docker Compose
