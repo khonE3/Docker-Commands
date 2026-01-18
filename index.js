@@ -36,7 +36,7 @@ app.get('/health', (req, res) => {
  */
 app.get('/', (req, res) => {
     res.json({
-        message: '🐳 Hello from Docker!',
+        message: '🐳 Hello BakWave from Docker!',
         environment: process.env.NODE_ENV || 'development',
         version: '1.0.0'
     });
