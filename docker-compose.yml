@@ -1,0 +1,188 @@
+# =============================================================================
+# Docker Compose - Multi-Service Application
+# =============================================================================
+# คำอธิบาย: ไฟล์ docker-compose.yml สำหรับจัดการหลาย Services พร้อมกัน
+# รวมถึง Node.js App, MongoDB, Redis, และ Nginx
+# =============================================================================
+
+# กำหนด Networks สำหรับการสื่อสารระหว่าง Containers
+networks:
+  app_network:
+    name: app_network
+    driver: bridge
+
+# กำหนด Volumes สำหรับเก็บข้อมูลถาวร
+volumes:
+  mongo_data:
+    name: mongo_data
+    driver: local
+  redis_data:
+    name: redis_data
+    driver: local
+
+# =============================================================================
+# Services
+# =============================================================================
+services:
+
+  # ---------------------------------------------------------------------------
+  # Node.js Application Service
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development # ใช้ development stage
+      tags:
+        - "myapp:latest"
+        - "myapp:1.0.0"
+    container_name: nodejs_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app # Mount โค้ดสำหรับ hot reload
+      - /app/node_modules # ป้องกัน node_modules ถูก override
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/myapp
+      - REDIS_URL=redis://redis:6379
+      - CHOKIDAR_USEPOLLING=true # สำหรับ hot reload บน Windows
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # MongoDB Database Service
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+      - MONGO_INITDB_DATABASE=myapp
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Redis Cache Service
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Nginx Reverse Proxy Service
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+    depends_on:
+      - app
+    networks:
+      - app_network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database Service (Alternative)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=myapp
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d myapp" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - postgres # ใช้ --profile postgres เพื่อเปิดใช้งาน
+
+  # ---------------------------------------------------------------------------
+  # MySQL Database Service (Alternative)
+  # ---------------------------------------------------------------------------
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=myapp
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=password123
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - app_network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - mysql # ใช้ --profile mysql เพื่อเปิดใช้งาน
+
+  # ---------------------------------------------------------------------------
+  # Adminer - Database Management Tool
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - app_network
+    profiles:
+      - tools # ใช้ --profile tools เพื่อเปิดใช้งาน

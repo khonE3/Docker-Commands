@@ -1,0 +1,34 @@
+{
+    "name": "docker-commands-demo",
+    "version": "1.0.0",
+    "description": "Docker Commands Demo Application - ตัวอย่าง Node.js Application สำหรับใช้ร่วมกับ Docker",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon index.js",
+        "docker:build": "docker build -t docker-demo .",
+        "docker:run": "docker run -d -p 3000:3000 --name docker-demo docker-demo",
+        "docker:stop": "docker stop docker-demo && docker rm docker-demo",
+        "compose:up": "docker compose up -d",
+        "compose:down": "docker compose down",
+        "compose:logs": "docker compose logs -f"
+    },
+    "keywords": [
+        "docker",
+        "docker-compose",
+        "nodejs",
+        "express",
+        "container"
+    ],
+    "author": "Docker Demo",
+    "license": "MIT",
+    "dependencies": {
+        "express": "^4.18.2"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
